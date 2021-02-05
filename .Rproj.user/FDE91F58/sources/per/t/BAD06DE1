@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1585032347317.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1450791785",
+    "id" : "BAD06DE1",
+    "lastKnownWriteTime" : 1585726045,
+    "last_content_update" : 1585726045122,
+    "path" : "~/OneDrive/work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/R/Tools.R",
+    "project_path" : "R/Tools.R",
+    "properties" : {
+        "cursorPosition" : "189,42",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

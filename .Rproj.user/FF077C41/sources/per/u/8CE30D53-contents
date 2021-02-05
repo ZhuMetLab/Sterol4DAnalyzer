@@ -1,0 +1,22 @@
+x <- data.frame(matrix(1:9, ncol = 3))
+rownames(x) <- c("a", "b", "c")
+y <-  data.frame(matrix(11:16, ncol = 3))
+rownames(y) <- c("a", "c")
+x
+y
+View(merge(x, y, all = TRUE, by = "row.names"))
+
+Gaussian <- function(sigma, mu) {
+  x <- seq(-3, 3, by = 0.5)
+  exp(-(x - mu)^2/(2*sigma^2))
+}
+plot(Gaussian(1, 0))
+a <- Gaussian(1, 0)
+b <- Gaussian(1, 0) * 2
+c <- Gaussian(1.4, 0)/3
+plot(b, type = "b", col = "blue")
+points(a, type = "b", col = "red")
+points(c, type = "b", col = "green")
+cor(a,b)
+cor(a, c)
+cor(b, c)

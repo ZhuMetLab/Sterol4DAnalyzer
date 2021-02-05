@@ -1,0 +1,9 @@
+which(!sapply(colnames(xx@info), function(clnm) {
+  identical(xx@info[, clnm], yy@info[, clnm])
+}))
+idx <- which(abs(xx@info$ccs - yy@info$ccs) > 1e-4)
+
+xx@info$ccs[idx]
+yy@info$ccs[idx]
+
+yy@info[idx, ]

@@ -1,0 +1,170 @@
+OutputValues <- function(args, values, checkname = TRUE, global = FALSE) {
+  if (missing(args)) {
+    args <- names(values)
+  } else {
+    args <- as.character(substitute(args)[-1])
+  }
+  if (checkname & !is.null(names(values))) {
+    args0 <- args
+    values <- values[args0]
+    values <- values[!sapply(values, is.null)]
+    args <- names(values)
+    idx <- which(is.na(match(args0, args)))
+    if (length(idx) > 0) {
+      warning(paste("The following arguments are not present in values and will be ignored:\n",
+                    paste(args0[idx], collapse = ",")))
+
+    }
+  }
+  lenArgs <- length(args)
+  lenValues <- length(values)
+  if (lenArgs != lenValues) {
+    warning("Arguments and values are of different length!")
+    minlen <- min(c(lenArgs, lenValues))
+    idxkeep <- seq(minlen)
+    args <- args[idxkeep]
+    values <- values[idxkeep]
+  }
+  mapply(assign, args, values,
+         MoreArgs = list(envir = parent.frame()))
+  invisible()
+}
+
+SetParams <- function(wd = ".",
+                      spectraType = c("raw", "mgf", "msp", "cef"),
+                      polarity = c("positive", "negative"),
+                      instrument = c("Sciex6600",
+                                     "Agilent6560"),
+                      libdata = NULL) {
+  require(MSProcess)
+  require(SpectraTools)
+  spectraType <- match.arg(spectraType)
+  polarity <- match.arg(polarity)
+  instrument <- match.arg(instrument)
+
+  experimentParam <- MSProcess::ExperimentParam(wd = wd, lc = "RP",
+                                                polarity = polarity,
+                                                instrument = instrument)
+  detectPeaksParam <- NULL
+
+  annotationParam <- MSProcess::AnnotationParam()
+  assignMSMSParam <- switch(
+    spectraType,
+    "raw" = {
+      detectPeaksParam <- MSProcess::DetectPeaksParam(peakwidth = c(5, 25),
+                                                      ppm = 30,
+                                                      plotGroupEIC = TRUE,
+                                                      rerun = FALSE,)
+      MSProcess::AssignMSMSParam()
+    },
+    "mgf" = MSProcess::AssignMSMSParam(rtTol = 15, mzTol = 10, rerun = TRUE,
+                                       rtUnitMS1 = "m", rtUnitMS2 = "s"),
+    "cef" = MSProcess::AssignMSMSParam(rtTol = 15, mzTol = 10, rerun = TRUE,
+                                       rtUnitMS1 = "m", rtUnitMS2 = "m"),
+    "msp" = MSProcess::AssignMSMSParam(rtTol = 15, mzTol = 10, rerun = TRUE,
+                                       rtUnitMS1 = "m", rtUnitMS2 = "s")
+  )
+
+  # parseParam <- switch(
+  #   spectraType,
+  #   "mgf" = ParseSpectraParam(type = spectraType,
+  #                             labelKeep = c("PEPMASS", "RTINSECONDS"),
+  #                             labelName = c("mz", "rt"),
+  #                             labelMerge = "PEPMASS",
+  #                             sepMerge = " "),
+  #   "cef" = ParseSpectraParam(type = spectraType),
+  #   "msp" = ParseSpectraParam(type = spectraType,
+  #                             labelKeep = c("NAME", "PRECURSORMZ", "RETENTIONTIME"),
+  #                             labelName = c("name", "mz", "rt")),
+  #   NULL
+  # )
+  searchParam <- SpectraTools::SearchParam()
+  SpectraTools::toleranceRT(searchParam) <- c(39, 78)
+  SpectraTools::toleranceCCS(searchParam) <- c(1.34, 2.68)
+
+  matchParam <- SpectraTools::MatchParam()
+  SpectraTools::thrIntensityRel(matchParam) <- 0.03
+  SpectraTools::cutoff(matchParam) <- 0.6
+  SpectraTools::tuneLibSpectra(matchParam) <- TRUE
+
+  switch(instrument,
+         "Sciex6600" = {
+           SpectraTools::resDefineAt(searchParam) <-
+             SpectraTools::resDefineAt(matchParam) <-
+             MSProcess::resDefineAt(experimentParam) <- 400
+           SpectraTools::ms2range(matchParam) <- MSProcess::ms2range(experimentParam) <- c(200, 2000)
+           SpectraTools::thrIntensityAbs(matchParam) <- 30
+           SpectraTools::scoreCCS(searchParam) <- FALSE
+           combineParam <- SpectraTools::CombineParam(cutoff = 0.6,
+                                                      weightRT = 0.3,
+                                                      weightMSMS = 0.7,
+                                                      scoreMSMS = "reverse")
+         },
+         "Agilent6560" = {
+           SpectraTools::resDefineAt(searchParam) <-
+             SpectraTools::resDefineAt(matchParam) <-
+             MSProcess::resDefineAt(experimentParam) <- 350
+           SpectraTools::ms2range(matchParam) <- MSProcess::ms2range(experimentParam) <- c(200, 2000)
+           thrIntensityAbs(matchParam) <- 100
+           combineParam <- SpectraTools::CombineParam(cutoff = 0.6,
+                                                      weightRT = 0.2,
+                                                      weightCCS = 0.4,
+                                                      weightMSMS = 0.4,
+                                                      scoreMSMS = "reverse")
+         }
+  )
+
+  dirRes <- system.file("paramsets", package = getPackageName())
+  # dirRes <- experimentParam@resDir
+  params <- list("experimentParam" = experimentParam,
+                 "detectPeaksParam" = detectPeaksParam,
+                 "annotationParam" = annotationParam,
+                 "assignMSMSParam" = assignMSMSParam,
+                 # "parseParam" = parseParam,
+                 "combineParam" = combineParam,
+                 "searchParam" = searchParam,
+                 "matchParam" = matchParam)
+
+  saveRDS(params,
+          # file = file.path(dirRes, paste0("2D_6600_", polarity)),
+          file = file.path(dirRes, paste(instrument, polarity, spectraType, sep = "_")),
+          # file = file.path(dirRes, paste(instrument, polarity, spectraType, sep = "_")),
+          version = 2)
+  for (nm in names(params)) {
+    assign(nm, params[[nm]], envir = parent.frame())
+  }
+  invisible()
+}
+
+LoadParam <- function(wd = ".",
+                      paramset = c("Sciex6600_negative_raw",
+                                   "Sciex6600_negative_cef",
+                                   "Sciex6600_negative_mgf",
+                                   "Sciex6600_negative_msp",
+                                   "Sciex6600_positive_raw",
+                                   "Sciex6600_positive_cef",
+                                   "Sciex6600_positive_mgf",
+                                   "Sciex6600_positive_msp",
+                                   "Agilent6560_negative_raw",
+                                   "Agilent6560_negative_cef",
+                                   "Agilent6560_negative_mgf",
+                                   "Agilent6560_negative_msp",
+                                   "Agilent6560_positive_raw",
+                                   "Agilent6560_positive_cef",
+                                   "Agilent6560_positive_mgf",
+                                   "Agilent6560_positive_msp",
+                                   "2D_6600_positive",
+                                   "2D_6600_negative")) {
+  # require(MSProcess)
+  paramset <- match.arg(paramset)
+
+  fileParam <- system.file("paramsets", paramset, package = getPackageName())
+  params <- readRDS(fileParam)
+
+  wd(params$experimentParam) <- wd
+
+  for (nm in names(params)) {
+    assign(nm, params[[nm]], envir = parent.frame())
+  }
+  invisible()
+}

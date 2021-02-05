@@ -1,0 +1,155 @@
+setwd("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/paramsets/")
+fn <- "Sciex6600_positive_raw_rt2"
+xx <- readRDS(fn)
+xx$experimentParam@ms2range <- c(100,2000)
+xx$matchParam@ppm <- 25
+xx$matchParam@ms2range <- c(100,2000)
+
+
+saveRDS(xx, file = fn, version = 2)
+rm(fn)
+
+fns <- list.files()
+fns <- fns[grepl("positive", fns)]
+fns <- fns[grepl("Sciex", fns)]
+fn <- fns[1]
+for (fn in fns) {
+  xx <- readRDS(fn)
+  xx$matchParam@weightMZ <- 1
+  xx$matchParam@weightIntensity <- 0.6
+  # xx$experimentParam@ms2range <- c(100,1700)
+  # xx$matchParam@ms2range <- c(100,1700)
+  # xx$experimentParam@resDefineAt <- 400
+  # xx$searchParam@ppm <- 20
+  # xx$searchParam@toleranceRT <- c(39,78)
+  # xx$searchParam@toleranceRT <- c(32,64)
+  # xx$searchParam@resDefineAt <- 400
+  # xx$matchParam@ppm <- 30
+  # xx$matchParam@resDefineAt <- 400
+
+  # xx$matchParam@weightIntensity <- 1
+  # xx$matchParam@weightMZ <- 1
+  # xx$matchParam@ppmPrecursorFilter <- 20
+  # xx$matchParam@includePrecursor <- FALSE
+  # xx$experimentParam@ms2range <- c(100, 2000)
+  # xx$matchParam@ms2range <- c(100, 2000)
+  # xx$assignMSMSParam@thrIntMS1Predicted <- 0
+  saveRDS(xx, file = fn, version = 2)
+}
+
+BaseParse <- function(filetype, ccsFound) {
+  parseParam <- switch(
+    filetype,
+    "mgf" = SpectraTools::ParseSpectraParam(type = "mgf",
+                                            labelMerge = "PEPMASS",
+                                            sepMerge = " ",
+                                            denoise = TRUE,
+                                            ppmPrecursorFilter = 20),
+    "cef" = SpectraTools::ParseSpectraParam(type = "cef",
+                                            denoise = TRUE,
+                                            ppmPrecursorFilter = 20),
+    "msp" = {
+      if (ccsFound) {
+        SpectraTools::ParseSpectraParam(type = "msp",
+                                        labelKeep = c("NAME",
+                                                      "PRECURSORMZ",
+                                                      "RETENTIONTIME",
+                                                      "CCS"),
+                                        labelName = c("name",
+                                                      "mz",
+                                                      "rt",
+                                                      "ccs"),
+                                        denoise = TRUE,
+                                        ppmPrecursorFilter = 20)
+      } else {
+        SpectraTools::ParseSpectraParam(type = "msp",
+                                        labelKeep = c("NAME",
+                                                      "PRECURSORMZ",
+                                                      "RETENTIONTIME"),
+                                        labelName = c("name",
+                                                      "mz",
+                                                      "rt"),
+                                        denoise = TRUE,
+                                        ppmPrecursorFilter = 20)
+      }
+    }
+  )
+}
+
+setwd("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/paramsets/")
+fns <- list.files()
+# fns <- fns[grepl("rt1", fns)]
+# fns <- fns[grepl("Sciex", fns)]
+fn <- fns[3]
+for (fn in tail(fns, -2)) {
+  ccsFound <- TRUE
+  xx <- readRDS(fn)
+  types <- c("mgf", "msp", "cef")
+  filetype <- types[sapply(types, grepl, fn)]
+  if (length(filetype)) {
+    parseParam <- BaseParse(filetype, ccsFound)
+    parseParam@ppmPrecursorFilter <- xx$matchParam@ppmPrecursorFilter
+    parseParam@thrIntensityAbs <- xx$matchParam@thrIntensityAbs
+    parseParam@thrIntensityRel <- xx$matchParam@thrIntensityRel
+    parseParam@intensityNormed <- xx$matchParam@intensityExpNormed
+    parseParam@includePrecursor <- xx$matchParam@includePrecursor
+    parseParam@ms2range <- xx$matchParam@ms2range
+  } else {
+    parseParam <- NULL
+  }
+  xx$parseParam <- parseParam
+  saveRDS(xx, file = fn, version = 2)
+}
+
+
+
+
+
+
+
+
+fn <- fns[1]
+sapply(xx, function(x) {
+  "weightMZ" %in% slotNames(x)
+})
+
+setwd("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/lib/")
+fns <- list.files()[2:5]
+mzDiff <- c(-1.007276, 44.998194, 1.007276, 18.0344, 22.989218)
+names(mzDiff) <- c("[M-H]", "[M+HCOO]", "[M+H]", "[M+NH4]", "[M+Na]")
+
+for (fn in fns) {
+  xx <- readRDS(fn)
+  if (any(grepl("ccs", colnames(xx@info)))) {
+    xx@info$ccs <- round(xx@info$ccs, 1)
+  }
+  xx@info$mz <- xx@info$exact.mass + mzDiff[xx@info$adduct]
+  saveRDS(xx, file = fn, version = 2)
+}
+
+setwd("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/lib")
+fns <- list.files()[2:5]
+for (fn in fns) {
+  xx <- readRDS(fn)
+  spectra <- lapply(xx@spectra, function(spec) {
+    isDup <- duplicated(spec$mz)
+    if (any(isDup)) {
+      spec <- do.call(rbind, lapply(unique(spec$mz), function(mz) {
+        nr <- which(spec$mz == mz)
+        int <- sum(spec$intensity[nr])
+        anno <- paste0(sort(spec$annotation[nr]), collapse = "/")
+        data.frame("mz" = mz, "intensity" = int, "annotation" = anno)
+      }))
+    }
+    return(spec)
+  })
+  xx@spectra <- spectra
+  saveRDS(xx, file = fn, version = 2)
+}
+
+fn <- fns[1]
+
+
+
+
+

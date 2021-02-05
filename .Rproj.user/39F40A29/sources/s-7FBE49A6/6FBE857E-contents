@@ -1,0 +1,244 @@
+wd <- "~/Work/Data/LipidAnalyzer2/data/"
+wd <- "~/Work/Data/LipidAnalyzer2/Demo6560"
+wd <- "~/Work/Data/LipidAnalyzer2/DemoCEF"
+setwd(wd)
+wd <- "/Users/yinyd/data/LTZ/20200430-4Dlipidtest/testdata"
+setwd(wd)
+
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+load("../lib/libdata.Rda")
+LoadParam(paramset = "Agilent6560_positive_cef_rt2")
+LipidAnalyzer(filePeaks = "Si100s70MS1.csv",
+              spectraType = "cef",
+              libdata = libdata,
+              fileRtCalibrate = "20190626RTQC.csv",
+              fileRtRef = "STD-RTQC.csv",
+              adjustAccuracy = TRUE,
+              applyRules = FALSE,
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+######################################
+## MGF
+######################################
+wd <- "~/Work/Data/LipidAnalyzer2/Demo6560"
+wd <- "~/data/Lipid4DAnalyzer/test/Agilent6560_negative_mgf_rt2/"
+setwd(wd)
+
+# require(MSProcess)
+# require(SpectraTools)
+devtools::load_all("~/OneDrive/work/dev/SpectraTools/SpectraTools/")
+devtools::load_all("~/OneDrive/work/dev/MSProcess/MSProcess/")
+devtools::load_all("~/OneDrive/work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+
+LoadParam(paramset = "Agilent6560_negative_mgf_rt2")
+LipidAnalyzer(filePeaks = "PlasmaNeg_MS1_table.csv", spectraType = "mgf", libname = "4D_6560_RT2_LipidMapsTool267k", fileRtCalibrate = "rt_calibration_table.csv", rulename = "4D_6560", experimentParam = experimentParam,detectPeaksParam = detectPeaksParam,annotationParam = annotationParam,assignMSMSParam = assignMSMSParam,searchParam = searchParam,matchParam = matchParam,combineParam = combineParam)
+
+LoadParam(paramset = "Agilent6560_positive_mgf_rt2")
+
+ParseSpectra(parseParam,)
+
+LipidAnalyzer(filePeaks = "MS1 peak table_mobility.csv",
+              spectraType = "mgf",
+              libname = "4D_6560_RT2_LipidMapsTool267k",
+              fileRtCalibrate = "rt_mapping_table.csv",
+              applyRules = T,
+              rulename = "4D_6560",
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+
+
+
+
+LoadParam(wd = wd,
+          paramset = "Agilent6560_negative_raw_rt1")
+
+LipidAnalyzer(filePeaks = "PlasmaNeg_MS1_table.csv",
+              spectraType = "mgf",
+              libname = "4D_6560_RT1_LipidMapsTool267k",
+              rulename = "4D_6560",
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              parseParam = parseParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+wd <- "/Users/yinyd/Work/data/Lipid4DAnalyzer/pos"
+setwd(wd)
+options(error = recover)
+require(MSProcess)
+require(SpectraTools)
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "2D_6600_positive")
+detectPeaksParam@plotGroupEIC <- FALSE
+plotGroupEIC(detectPeaksParam) <- FALSE
+MSProcess::rerun(assignMSMSParam) <- FALSE
+MSProcess::outputSpec(assignMSMSParam) <- FALSE
+LipidAnalyzer(spectraType = "raw", libname = "2D_6600_RT1_LipidAnalyzer76k",
+              applyRules = F,
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+##########################################
+# MGF IMMS Test
+##########################################
+setwd("/Users/yinyd/work/data/Lipid4DAnalyzer/Demo6560")
+options(error = recover)
+require(MSProcess)
+require(SpectraTools)
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "Agilent6560_negative_mgf_rt1")
+# experimentParam@ms2range <- c(100,1700)
+# matchParam@ms2range <- c(100,1700)
+# experimentParam@resDefineAt <- 400
+# searchParam@ppm <- 20
+# searchParam@toleranceRT <- c(32,64)
+# searchParam@resDefineAt <- 400
+# matchParam@ppm <- 30
+# matchParam@resDefineAt <- 400
+LipidAnalyzer(filePeaks = "PlasmaNeg_MS1_table.csv", spectraType = "mgf",
+              libname = "4D_6560_RT1_LipidMapsTool267k",
+              fileRtCalibrate = "rt_calibration_table.csv",
+              applyRules = T,
+              ruledir = ".",
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+setwd("/Users/yinyd/work/data/Lipid4DAnalyzer/pos")
+options(error = recover)
+require(MSProcess)
+require(SpectraTools)
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "Agilent6560_positive_mgf_rt1")
+matchParam@weightMZ <- 1
+matchParam@weightIntensity <- 0.6
+LipidAnalyzer(filePeaks = "PlasmaPos_MS1_table.csv", spectraType = "mgf",
+              libname = "4D_6560_RT1_LipidMapsTool267k",
+              fileRtCalibrate = "rt_calibration_table.csv",
+              applyRules = T, rulename = "4D_6560",
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+##########################################
+# CEF IMMS Test
+##########################################
+setwd("/Users/yinyd/work/data/Lipid4DAnalyzer/democef/neg")
+options(error = recover)
+require(MSProcess)
+require(SpectraTools)
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "Agilent6560_negative_cef_rt1")
+MSProcess::outputSpec(assignMSMSParam) <- TRUE
+LipidAnalyzer(filePeaks = "plasma_neg_feature_table.csv",
+              spectraType = "cef",
+              libname = "4D_6560_RT1_LipidMapsTool267k",
+              fileRtCalibrate = "rt_mapping_table.csv",
+              applyRules = T,
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+setwd("/Users/yinyd/work/data/Lipid4DAnalyzer/democef/pos")
+options(error = recover)
+require(MSProcess)
+require(SpectraTools)
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "Agilent6560_positive_cef_rt1")
+LipidAnalyzer(filePeaks = "PlasmaPos_MS1_table.csv", spectraType = "cef",
+              libname = "4D_6560_RT1_LipidMapsTool267k",
+              applyRules = F,
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+setwd("/Users/yinyd/data/Lipid4DAnalyzer/neg")
+devtools::load_all("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer")
+LoadParam(paramset = "Agilent6560_negative_cef_rt2")
+MSProcess::outputSpec(assignMSMSParam) <- TRUE
+searchParam@toleranceRT <- c(39,78)
+LipidAnalyzer(filePeaks = "nistplasma_neg_peaktable.csv",
+              spectraType = "cef",
+              libname = "4D_6560_RT2_LipidMapsTool267k",
+              fileRtCalibrate = "rt_mapping_table.csv",
+              rulename = "4D_6560",
+              experimentParam = experimentParam,
+              detectPeaksParam = detectPeaksParam,
+              annotationParam = annotationParam,
+              assignMSMSParam = assignMSMSParam,
+              searchParam = searchParam,
+              matchParam = matchParam,
+              combineParam = combineParam)
+
+SetParams(spectraType = "raw", instrument = "Agilent6560", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "raw", instrument = "Agilent6560", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "msp", instrument = "Agilent6560", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "msp", instrument = "Agilent6560", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "mgf", instrument = "Agilent6560", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "mgf", instrument = "Agilent6560", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "cef", instrument = "Agilent6560", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "cef", instrument = "Agilent6560", polarity = "pos", rt = "rt1")
+
+SetParams(spectraType = "raw", instrument = "Sciex6600", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "raw", instrument = "Sciex6600", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "msp", instrument = "Sciex6600", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "msp", instrument = "Sciex6600", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "mgf", instrument = "Sciex6600", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "mgf", instrument = "Sciex6600", polarity = "pos", rt = "rt1")
+SetParams(spectraType = "cef", instrument = "Sciex6600", polarity = "neg", rt = "rt1")
+SetParams(spectraType = "cef", instrument = "Sciex6600", polarity = "pos", rt = "rt1")
+
+
+SetParams(spectraType = "raw", instrument = "Agilent6560", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "raw", instrument = "Agilent6560", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "msp", instrument = "Agilent6560", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "msp", instrument = "Agilent6560", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "mgf", instrument = "Agilent6560", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "mgf", instrument = "Agilent6560", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "cef", instrument = "Agilent6560", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "cef", instrument = "Agilent6560", polarity = "pos", rt = "rt2")
+
+SetParams(spectraType = "raw", instrument = "Sciex6600", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "raw", instrument = "Sciex6600", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "msp", instrument = "Sciex6600", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "msp", instrument = "Sciex6600", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "mgf", instrument = "Sciex6600", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "mgf", instrument = "Sciex6600", polarity = "pos", rt = "rt2")
+SetParams(spectraType = "cef", instrument = "Sciex6600", polarity = "neg", rt = "rt2")
+SetParams(spectraType = "cef", instrument = "Sciex6600", polarity = "pos", rt = "rt2")

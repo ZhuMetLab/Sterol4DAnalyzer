@@ -1,0 +1,466 @@
+
+GenLibData <- function(wd) {
+  setwd(wd)
+  lipidID <- read.csv("../lipidID.csv", stringsAsFactors = FALSE)
+  rownames(lipidID) <- lipidID$name
+
+  libdirs <- list.dirs(recursive = FALSE)
+  libdirs <- libdirs[!grepl("CL$", libdirs)]
+  libfiles <- lapply(libdirs, function(libdir) {
+    specfiles <- list.files(libdir, pattern = "M\\+|-", recursive = T, full.names = T)
+    infofiles <- list.files(libdir, pattern = "(?i)info", recursive = T, full.names = T)
+    rtfiles <- list.files(libdir, pattern = "(?i)rt", recursive = T, full.names = T)
+    ccsfiles <- list.files(libdir, pattern = "(?i)ccs", recursive = T, full.names = T)
+    mdfiles <- list.files(libdir, pattern = "(?i)md", recursive = T, full.names = T)
+    return(list("specfiles" = specfiles,
+                "infofiles" = infofiles,
+                "rtfiles" = rtfiles,
+                "ccsfiles" = ccsfiles,
+                "mdfiles" = mdfiles))
+  })
+
+  specfiles <- unlist(lapply(libfiles, `[[`, "specfiles"))
+  addus <- sort(unique(gsub("(?i).csv", "", basename(specfiles))))
+  adduid <- c(4, 1, 5, 2, 3, 4, 3)
+  names(adduid) <- addus
+  ReSaveFile <- function(fn, dt) {
+    fnsave <- file.path("../New", paste0(basename(getwd())), fn)
+    if (!dir.exists(dirname(fnsave))) {
+      dir.create(dirname(fnsave), recursive = TRUE)
+    }
+    write.csv(dt, fnsave, row.names = FALSE)
+  }
+
+  bpparam <- BiocParallel::MulticoreParam(progressbar = TRUE, workers = 6)
+  specall <- BiocParallel::bplapply(specfiles, function(specfile) {
+    spectable <- read.csv(specfile, stringsAsFactors = FALSE, check.names = FALSE)
+    nclipName <- grep("(?i)^abbr", colnames(spectable))
+    colnames(spectable)[nclipName] <- "abbr.name"
+    ReSaveFile(specfile, spectable)
+    spectable
+  }, BPPARAM = bpparam)
+
+  # infofiles <- unlist(lapply(libfiles, `[[`, "infofiles"))
+  # infoall <- BiocParallel::bplapply(infofiles, function(x) {
+  #   read.csv(x, stringsAsFactors = FALSE, check.names = FALSE)
+  # })
+  # x <- sapply(specall, function(x) {
+  #   colnames(x)[1]
+  # })
+  # unique(x)
+
+  lipidClasses <- read.csv("../lipidClasses.csv", stringsAsFactors = FALSE)
+
+  # MakeLibid <- function(lipclassid, lipname, digit = 6L) {
+  #   digids <- seq_along(lipclassid)
+  #
+  #   ids <- sapply(digids, function(digid) {
+  #     paste0(paste0(rep("0", digit - nchar(digid)), collapse = ""), digid)
+  #   })
+  #   ids <- paste0(lipclassid, ids)
+  #   names(ids) <- lipname
+  #   return(ids)
+  # }
+
+  classnm <- gsub("\\./\\w+_", "", libdirs)
+  classnm <- unlist(strsplit(classnm, split = ":"))
+  classnm[which(is.na(match(classnm, lipidClasses$class)))]
+
+
+  lipall <- unique(unlist(BiocParallel::bplapply(specall, function(spectable) {
+    gsub("\\((\\d+[EZ],)*\\d+[EZ]\\)", "", spectable$abbr.name)
+  })))
+
+  lipall <- gsub("\\[4',5'\\]", "", lipall)
+
+  lipallID <- lipidID[lipall, "labid"]
+  # lipid <- seq_along(lipall)
+  adduCCS <- c("M.H..CCS", "M.Na..CCS", "M.NH4..CCS", "M.H..CCS.1", "M.HCOO..CCS")
+  names(adduCCS) <- c( "[M+H]", "[M+Na]", "[M+NH4]" , "[M-H]","[M+HCOO]")
+
+  # libdirs <- libdirs[libdirs != "./011_CL"]
+  # liball <- lapply(libdirs, function(libdir) {
+  liball <- BiocParallel::bplapply(libdirs, function(libdir) {
+    cat(libdir, "\t")
+    # lipclass <- gsub("\\d+_", "", basename(libdir))
+    # lipclassid <- names(lipidClass[match(lipclass, lipidClass)])
+
+    specfiles <- list.files(libdir, pattern = "M\\+|-", recursive = T, full.names = T)
+    infofiles <- list.files(libdir, pattern = "(?i)info", recursive = T, full.names = T)
+    rtfiles <- list.files(libdir, pattern = "(?i)rt", recursive = T, full.names = T)
+    ccsfiles <- list.files(libdir, pattern = "(?i)ccs", recursive = T, full.names = T)
+    mdfiles <- list.files(libdir, pattern = "(?i)md", recursive = T, full.names = T)
+    lipinfo <- read.csv(infofiles, stringsAsFactors = FALSE, check.names = FALSE)
+    lipinfo$lipid.map.id[is.na(lipinfo$lipid.map.id)] <- ""
+    nclipNameInfo <- grep("(?i)^abbr", colnames(lipinfo))
+    colnames(lipinfo)[nclipNameInfo] <- "abbr.name"
+    ReSaveFile(infofiles, lipinfo)
+    fncpfrom <- c(rtfiles, ccsfiles, mdfiles)
+    fncpto <- file.path("../New", paste0(basename(getwd())), fncpfrom)
+    file.copy(fncpfrom, fncpto)
+    rownames(lipinfo) <- lipinfo$abbr.name
+    spectables <- lapply(specfiles, function(specfile) {
+      spectable <- read.csv(specfile, stringsAsFactors = FALSE, check.names = FALSE)
+      nclipName <- grep("(?i)^abbr|(?i)^name", colnames(spectable))
+      colnames(spectable)[nclipName] <- "abbr.name"
+      simpname <- gsub("\\((\\d+[EZ],)*\\d+[EZ]\\)", "", spectable$abbr.name)
+      simpname <- gsub("\\[4',5'\\]", "", simpname)
+      classid <- lipinfo[spectable[, nclipName], "sub.class"]
+      # adduct <- gsub("(?i).csv", "", basename(specfile))
+      res <- data.frame("SimpName" = simpname,
+                        # "adduct" = adduct,
+                        spectable,
+                        stringsAsFactors = FALSE, check.names = FALSE)
+      res$classid <- classid
+      res
+    })
+    names(spectables) <- specfiles
+    lipname <- unname(unlist(lapply(spectables, function(spectable) {
+      spectable$SimpName
+    })))
+    # lipadducts <- unname(unlist(lapply(spectables, function(spectable) {
+    #   spectable$adduct
+    # })))
+
+    # lipclassid <- unname(unlist(lapply(spectables, function(spectable) {
+    #   clsid <- spectable$classid
+    #   if (grepl("LacCer", libdir)) {
+    #     clsid <- paste0(clsid, "AB")
+    #   }
+    #   if (grepl("GlcCer", libdir)) {
+    #     clsid <- paste0(clsid, "AA")
+    #   }
+    #   clsid
+    # })))
+    lipnameUnique <- unique(lipname)
+
+    # lipclassidUnique <- sapply(lipnameUnique, function(nm) {
+    #   unique(lipclassid[which(lipname == nm)])[1]
+    # })
+    # ndigit <- ifelse(grepl("LacCer|GlcCer", libdir), 4, 6)
+    # lipidall <- MakeLibid(lipclassidUnique, lipnameUnique, digit = ndigit)
+    lipidall <- lipidID[lipnameUnique, "labid"]
+    names(lipidall) <- lipnameUnique
+    spectables <- lapply(spectables, function(spectable) {
+      lipid <- lipidall[match(spectable$SimpName, names(lipidall))]
+      data.frame("lipid" = lipid, spectable,
+                 stringsAsFactors = FALSE, check.names = FALSE)
+    })
+
+
+    lipinfo$id <- lipidall[match(gsub("\\[4',5'\\]",
+                                      "",
+                                      gsub("\\((\\d+[EZ],)*\\d+[EZ]\\)", "",
+                                           lipinfo$abbr.name)),
+                                 names(lipidall))]
+
+    rtinfo <- read.csv(rtfiles, stringsAsFactors = FALSE, check.names = FALSE)
+    ReSaveFile(rtfiles, rtinfo)
+    ncolRTrp <- grep("^rp.pred.rt|^pred.rt$", colnames(rtinfo), perl = TRUE)
+    lipinfo$rt.rp <- rtinfo[match(lipinfo$abbr.name, rtinfo$mol.names), ncolRTrp]
+    ncolRThilic <- grep("^hilic.pred.rt$", colnames(rtinfo), perl = TRUE)
+    if (length(ncolRThilic) > 0) {
+      lipinfo$rt.hilic <- rtinfo[match(lipinfo$abbr.name, rtinfo$mol.names), ncolRThilic]
+    } else {
+      lipinfo$rt.hilic <- NA
+    }
+    if (length(ccsfiles) != 0) {
+      ccsinfo <- read.csv(ccsfiles, stringsAsFactors = FALSE, check.names = FALSE)
+    }
+    infofinal <- do.call(rbind, lapply(lipidall, function(lipid) {
+      nr <- which(lipinfo$id == lipid)
+      infoall <- lipinfo[nr, ]
+      # colrt <- grep("rt", colnames(infoall))
+      info <- infoall[1, !colnames(infoall) %in% c("rt.rp", "rt.hilic")]
+      info$abbr.name <- paste(infoall$abbr.name, collapse = ";")
+      info$smiles <-  paste(infoall$smiles, collapse = ";")
+      info$sys.name <- paste(infoall$sys.name, collapse = ";")
+      info$lipid.map.id <- paste(infoall$lipid.map.id[nchar(infoall$lipid.map.id) > 0], collapse = ";")
+      idx <- which(lipidClasses$id == info$sub.class)
+      classname <- unique(lipidClasses$class[idx])
+      if (length(idx) > 1 & length(classname) > 1) {
+        flagmatched <- sapply(lipidClasses$flag[idx], function(x) {
+          grepl(x, info$abbr.name)
+        })
+        classname <- lipidClasses$class[idx[flagmatched]]
+      }
+      info$classname <- classname
+      info$rt.rp <- round(mean(infoall$rt.rp), 0)
+      info$rt.hilic <- round(mean(infoall$rt.hilic), 0)
+      info
+    }))
+    specdata <- lapply(names(spectables), function(nm) {
+      spectable <- spectables[[nm]]
+      spectable <- spectable[match(unique(spectable$SimpName), spectable$SimpName), , drop = FALSE]
+      info <- spectable[, c(1, 2, 5)]
+      colnames(info) <- c("labid", "name", "mz")
+      info$adduct <- addu <- gsub("(?i).csv", "", basename(nm))
+      info$labid <- paste0(info$labid, adduid[info$adduct])
+      info <- data.frame(info, infofinal[info$name, 2:ncol(infofinal)],
+                         stringsAsFactors = FALSE, check.rows = FALSE)
+      # pol <- basename(dirname(nm))
+      # info$polarity <- "positive"
+      # info$polarity[pol == "neg"] <- "negative"
+
+      if (length(ccsfiles) != 0) {
+        ncCCS <- grep(paste0(adduCCS[addu], "$"), colnames(ccsinfo))
+        info$ccs <- apply(info, 1, function(dr) {
+          # nrccs <- match(strsplit(dr$abbr.name, split = ";")[[1]], ccsinfo$abbr.name)
+          nrccs <- match(strsplit(dr["abbr.name"], split = ";")[[1]], ccsinfo$abbr.name)
+          round(mean(ccsinfo[nrccs, ncCCS]), 1)
+        })
+      }
+      info$polarity <- ifelse(grepl("neg", basename(dirname(nm))), "negative", "positive")
+
+      nc <- ncol(spectable)
+      spec <- lapply(seq(nrow(spectable)), function(nr) {
+        drspec <- spectable[nr, -c(1:4, nc)]
+        ncspec <- seq(1, ncol(drspec), by = 2)
+        spec1 <- data.frame("mz" = as.numeric(drspec[, ncspec]),
+                            "intensity" = as.numeric(drspec[, ncspec + 1]),
+                            "annotation" = names(drspec[, ncspec]),
+                            stringsAsFactors = FALSE)
+        isDup <- duplicated(spec1$mz)
+        if (any(isDup)) {
+          spec1 <- do.call(rbind, lapply(unique(spec1$mz), function(mz) {
+            nr <- which(spec1$mz == mz)
+            int <- sum(spec1$intensity[nr])
+            anno <- paste0(sort(spec1$annotation[nr]), collapse = "/")
+            data.frame("mz" = mz, "intensity" = int, "annotation" = anno)
+          }))
+        }
+        return(spec1)
+      })
+      names(spec) <- spectable$lipid
+      return(list("info" = info,
+                  "spec" = spec))
+    })
+  # })
+  }, BPPARAM = bpparam)
+  # browser()
+  lipinfoList <- lapply(liball, function(lib) {
+    info <- do.call(rbind, lapply(lib, `[[`, "info"))
+    # ncRM <- grep("^sn\\d.", colnames(info))
+    # info <- info[, -ncRM, drop = FALSE]
+  })
+
+  infonames <- colnames(lipinfoList[[which.max(sapply(lipinfoList, ncol))]])
+  lipinfoList <- lapply(lipinfoList, function(info) {
+    tmp <- data.frame(matrix(ncol = length(infonames), nrow = nrow(info)))
+    colnames(tmp) <- infonames
+    tmp[, colnames(info)] <- info
+    tmp
+  })
+
+  lipinfo <- do.call(rbind, lipinfoList)
+
+  # recalculate m/z values based on exact mass and adduct types
+  mzDiff <- c(-1.007276, 44.998194, 1.007276, 18.0344, 22.989218)
+  names(mzDiff) <- c("[M-H]", "[M+HCOO]", "[M+H]", "[M+NH4]", "[M+Na]")
+  lipinfo$mz <- lipinfo$exact.mass + mzDiff[lipinfo$adduct]
+
+  lipspec <- do.call(c, lapply(liball, function(lib) {
+    spec <- do.call(c, lapply(lib, `[[`, "spec"))
+  }))
+
+  names(lipspec) <- NULL
+  # lib6600@MetInfo$lipclass <- unname(lipidClass[lib6600@MetInfo$sub.class])
+  libdata <- SpectraTools::SpectraData(info = lipinfo,
+                                       spectra = lipspec)
+  saveRDS(libdata,
+          file = file.path("~/OneDrive/work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/lib/",
+                           basename(getwd())),
+          version = 2)
+  write.csv(lipinfo,
+            file.path("..", paste0(basename(getwd()), ".csv")),
+            row.names = FALSE)
+  # writexl::write_xlsx(lipinfo,
+  #                     file.path("..", paste0(basename(getwd()), ".xlsx")))
+  #
+  invisible()
+}
+
+wd <- "~/data/Lipid4DAnalyzer/LipLib_20200827/3D_6600_RT1_LipidMAPSTool271k_Rule/"
+GenLibData(wd)
+wd <- "~/data/Lipid4DAnalyzer/LipLib_20200827/3D_6600_RT2_LipidMAPSTool271k_Rule/"
+GenLibData(wd)
+wd <- "~/data/Lipid4DAnalyzer/LipLib_20200827/4D_6560_RT1_LipidMAPSTool267k_Rule/"
+GenLibData(wd)
+wd <- "~/data/Lipid4DAnalyzer/LipLib_20200827/4D_6560_RT2_LipidMAPSTool267k_Rule/"
+GenLibData(wd)
+
+load("~/Work/dev/devbak/GIT/LipidAnalyzer/LipidAnalyzer/inst/lib/LibLipids.RData")
+info <- lib.lip$meta$neg
+infoNeg <- TransformInfo(lib.lip$meta$neg)
+infoNeg$polarity <- "negative"
+specNEG <- lapply(lib.lip$compound$neg, `[[`, "spec")
+names(specNEG) <- NULL
+
+infoPos <- TransformInfo(lib.lip$meta$pos)
+infoPos$polarity <- "positive"
+info <- rbind(infoPos, infoNeg)
+specPOS <- lapply(lib.lip$compound$pos, `[[`, "spec")
+names(specPOS) <- NULL
+rownames(info) <- NULL
+specdata <- SpectraTools::SpectraData(info = info, spectra = c(specPOS, specNEG))
+saveRDS(specdata,
+        file = file.path("~/Work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer/inst/lib/",
+                         "2D_6600_RT1_LipidAnalyzer76k"),
+        version = 2)
+
+TransformInfo <- function(info) {
+  adduct <- paste0(gsub(".*(?=\\+|-)", "[M", info$adduct, perl = TRUE), "]")
+  classname <- gsub("(\\+|-)+\\w+", "", info$adduct)
+  info$adduct <- adduct
+  info$classname <- classname
+  info
+}
+
+setwd("~/Work/Data/LipidAnalyzer2/LipidLibrary/RTCalibrationTableRef/")
+fn <- list.files()
+
+hilic <- MakeRefRT(read.csv("RT HILIC calibration table .csv", stringsAsFactors = FALSE))
+rp1 <- MakeRefRT(read.csv("RT1 reverse column calibration table .csv", stringsAsFactors = FALSE))
+rp2 <- MakeRefRT(read.csv("RT2 reverse column calibration table .csv", stringsAsFactors = FALSE))
+saveRDS(hilic, file = file.path("~/Work/GIT_DEV/LipidAnalyzer2/LipidAnalyzer2/inst/rtref/",
+                                "rt2/HILIC"),
+        version = 2)
+
+saveRDS(rp1, file = file.path("~/Work/GIT_DEV/LipidAnalyzer2/LipidAnalyzer2/inst/rtref/",
+                                "rt1/RP"),
+        version = 2)
+
+MakeRefRT <- function(rtTbl) {
+  colnames(rtTbl) <- c("name", "rt")
+  rtTbl <- rbind(data.frame("name" = "Start", "rt" = 0),
+               rtTbl,
+               data.frame("name" = "End", "rt" = 1080))
+  return(rtTbl)
+}
+
+GenLibLTZ <- function(wd, thr.rel = 1, thr.abs = 30) {
+  setwd(wd)
+  files <- list.files(wd, pattern = "(?i).csv$")
+  labid <- gsub("(?i).csv$", "", files)
+  names(files) <- labid
+  pdf("../xx.pdf")
+  libspec <- lapply(labid, function(id) {
+    fn <- files[id]
+    dt <- readr::read_csv(fn, skip = 2)[, c(1,3,4)]
+    spec <- data.frame(dt)
+    colnames(spec) <- c("mz", "intensity", "intensity.norm")
+
+    plot(spec[, 1:2], type = "h", main = id)
+    idx <- which(spec$intensity.norm > thr.rel & spec$intensity >= thr.abs)
+    if (length(idx)) {
+      points(spec[idx, 1:2], col = "red", type = "h")
+      text(spec[idx, 1],
+           spec[idx, 2],
+           spec[idx, 1], col = "blue", cex = 0.8)
+      spec <- spec[idx, 1:2, drop = FALSE]
+      rownames(spec) <- NULL
+      return(spec)
+    }
+  })
+  dev.off()
+  names(libspec) <- labid
+  libspec <- libspec[!sapply(libspec, is.null)]
+  info <- read.csv("../STD-lib-info-1st.csv", stringsAsFactors = FALSE)
+  info$rt <- round(info$rt * 60, 1)
+
+  MakeUniqueNames <- function(name) {
+    duplicated <- TRUE
+    i <- 2
+    while (duplicated) {
+      idxDuplicated <- which(duplicated(name))
+      if (length(idxDuplicated) > 0) {
+        if (i == 2) {
+          name[idxDuplicated] <- paste0(name[idxDuplicated], '_', i)
+        } else {
+          name[idxDuplicated] <- gsub(paste0('_', i - 1), paste0('_', i),
+                                      name[idxDuplicated])
+        }
+        i <- i + 1
+      } else {
+        duplicated <- FALSE
+      }
+    }
+    return(name)
+  }
+
+  metinfo <- info[, -ncol(info)]
+  metinfo$LM_ID <- MakeUniqueNames(info$LM_ID)
+  colnames(metinfo)[1] <- "labid"
+  colnames(metinfo)[3] <- "mz"
+  colnames(metinfo)[5] <- "name"
+  colnames(metinfo)[12] <- "classname"
+  colnames(metinfo)[14] <- "rt"
+
+  speclib <- apply(metinfo, 1, function(dr) {
+    libspec[[dr["In.house.ID"]]]
+  })
+  idxkeep <- which(!sapply(speclib, is.null))
+  libdata <- SpectraTools::SpectraData(info = metinfo[idxkeep, , drop = FALSE],
+                                       speclib[idxkeep])
+  save(libdata, file = "libdata.Rda", version = 2)
+  return(libdata)
+}
+
+wd <- "~/data/LTZ/20200425-STD-MNa-info/MSMS/"
+libdata <- GenLibLTZ(wd, thr.rel = 1, thr.abs = 30)
+
+load("libdata.Rda")
+
+GenLibLTZPredict <- function(fn) {
+  MakeUniqueNames <- function(name) {
+    duplicated <- TRUE
+    i <- 2
+    while (duplicated) {
+      idxDuplicated <- which(duplicated(name))
+      if (length(idxDuplicated) > 0) {
+        if (i == 2) {
+          name[idxDuplicated] <- paste0(name[idxDuplicated], '_', i)
+        } else {
+          name[idxDuplicated] <- gsub(paste0('_', i - 1), paste0('_', i),
+                                      name[idxDuplicated])
+        }
+        i <- i + 1
+      } else {
+        duplicated <- FALSE
+      }
+    }
+    return(name)
+  }
+  dt <- read.csv(fn, stringsAsFactors = FALSE)
+  nrNoName <- which(nchar(dt$COMMON_NAME) == 0)
+  dt$COMMON_NAME[nrNoName] <- dt$SYSTEMATIC_NAME[nrNoName]
+  labid <- MakeUniqueNames(dt$recode_id)
+  metinfo <- data.frame("labid" = labid, dt[, colnames(dt)[c(2:8)]],
+                        stringsAsFactors = F)
+  metinfo$rt.rp <- round(dt$rt * 60, 0)
+  metinfo$rt.hilic <- round(dt$rt * 60, 0)
+  metinfo$ccs <- round(dt$ccs, 1)
+  colnames(metinfo)[2] <- "name"
+  libspec <- apply(dt, 1, function(dr) {
+    spec <- data.frame("mz" = c(dr["product1"], dr["product2"]),
+               "intensity" = c(1, 1))
+    rownames(spec) <- NULL
+    spec
+  })
+  libdata <- SpectraTools::SpectraData(info = metinfo,
+                                       spectra = libspec)
+  save(libdata,
+       file = paste0("libdata_", gsub("(?i).csv$", "", basename(fn)), ".Rda"),
+       version = 2)
+  return(libdata)
+}
+wd <- "~/data/LTZ/20200425-Predlib-MNa-info/"
+setwd(wd)
+files <- list.files(wd, pattern = "(?i).csv$")
+for (fn in files) {
+  libdata <- GenLibLTZPredict(fn)
+}
+
+
+
+

@@ -1,0 +1,11 @@
+Package: Sterol4DAnalyzer
+Type: Package
+Title: Sterol-lipid identifier
+Version: 1.0.0
+Author: Yandong Yin
+Maintainer: Yandong Yin <yinyandong@sioc.ac.cn>, zhulab <zhulab@sioc.ac.cn>
+Description: Identifying sterol lipids with 4D match (mz, rt, ccs and MSMS)
+License: GPL2
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1

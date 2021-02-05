@@ -1,0 +1,16 @@
+Package: Lipid4DAnalyzer
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.1
+Author: Who wrote it
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Imports: SpectraTools, MSProcess
+Depends: SpectraTools, MSProcess
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.0
+NeedsCompilation: no
+Packaged: 2020-03-20 05:50:17 UTC; yinyd
