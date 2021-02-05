@@ -1,31 +1,26 @@
-SterolAnalyzer <- function(filePeaks = NULL,
-                          spectraType = c("msp", "mgf", "cef"),
-                          libnames = c("standardlib", "predictlib"),
-                          libdata = NULL,
-                          adjustAccuracy = TRUE,
-                          fileRtCalibrate = NULL,
-                          fileRtRef = NULL,
-                          experimentParam = NULL,
-                          detectPeaksParam = NULL,
-                          parseParam = NULL,
-                          assignMSMSParam = NULL,
-                          annotationParam = NULL,
-                          searchParam = NULL,
-                          matchParam = NULL,
-                          combineParam = NULL) {
+SterolAnalyzer <- function(filePeaks,
+                           spectraType = c("msp"),
+                           libdata = NULL,
+                           adjustAccuracy = TRUE,
+                           fileRtCalibrate = NULL,
+                           fileRtRef = NULL,
+                           experimentParam = NULL,
+                           parseParam = NULL,
+                           assignMSMSParam = NULL,
+                           searchParam = NULL,
+                           matchParam = NULL,
+                           combineParam = NULL) {
 
   wd0 <- getwd()
   setwd(experimentParam@wd)
   spectraType <- match.arg(spectraType)
   params <- list("experimentParam" = experimentParam,
-                 "detectPeaksParam" = detectPeaksParam,
-                 "annotationParam" = annotationParam,
                  "assignMSMSParam" = assignMSMSParam,
                  "parseParam" = parseParam,
                  "searchParam" = searchParam,
                  "matchParam" = matchParam,
                  "combineParam" = combineParam
-                 )
+  )
   save(params, file = file.path(experimentParam@resDir, "params.Rda"), version = 2)
   write.csv(GetParamTable(params),
             file.path(experimentParam@resDir, "params.csv"),
@@ -37,55 +32,36 @@ SterolAnalyzer <- function(filePeaks = NULL,
     if (assignMSMSParam@rtUnitMS1 == "m") {
       rtcalExp$rt <- round(rtcalExp$rt * 60, 0)
     }
-    if (missing(fileRtRef) || is.null(fileRtRef)) {
-      rtdirRef <- ifelse(grepl("RT1", libname), "rt1", "rt2")
-      rtfile <- system.file("rtref", rtdirRef, experimentParam@lc, package = getPackageName())
-      rtcalRef <- readRDS(rtfile)
-    } else {
+    if (!is.null(fileRtRef)) {
       rtcalRef <- read.csv(fileRtRef, stringsAsFactors = FALSE)
+    } else {
+      stop('Reference RT calibration table must be provided!')
     }
   }
 
-  if (!is.null(filePeaks)) {
-    metInfo <- read.csv(filePeaks, stringsAsFactors = FALSE)
-    if (adjustAccuracy) {
-      clCCS <- match("ccs", tolower(colnames(metInfo)))
-      if (length(clCCS)) {
-        metInfo[, clCCS] <- round(metInfo[, clCCS], 1)
-      }
+  metInfo <- read.csv(filePeaks, stringsAsFactors = FALSE)
+  if (adjustAccuracy) {
+    clCCS <- match("ccs", tolower(colnames(metInfo)))
+    if (length(clCCS)) {
+      metInfo[, clCCS] <- round(metInfo[, clCCS], 1)
     }
-    filesSpec = list.files(experimentParam@wd,
-                           pattern = paste0("(?i)\\.", spectraType, "$"),
-                           recursive = TRUE,
-                           full.names = TRUE)
-    expdata <- MSProcess::AssignMSMS(assignMSMSParam, metInfo, experimentParam,
-                                     parseParam, files = filesSpec)
-    # saveRDS(metInfo, file = file.path(experimentParam@tmpDir, "metInfo.rdata"))
-  } else if (!is.null(detectPeaksParam)) {
-    metInfo <- MSProcess::DetectPeaks(experimentParam, detectPeaksParam)
-    expdata <- MSProcess::AssignMSMS(assignMSMSParam, metInfo)
-    saveRDS(metInfo, file = file.path(experimentParam@tmpDir, "metInfo.rdata"))
-  }else {
-    stop("Please provide detectPeaksParam or filePeaks!")
   }
+  filesSpec = list.files(experimentParam@wd,
+                         pattern = paste0("(?i)\\.", spectraType, "$"),
+                         recursive = TRUE,
+                         full.names = TRUE)
+  expdata <- AssignMSMS(assignMSMSParam, metInfo, experimentParam,
+                        parseParam, files = filesSpec)
 
-  MSProcess:::.ShowSeperateLines("Identifying lipids ...")
+  .ShowSeperateLines("Identifying lipids ...")
 
   cat("    Searching librarial candidates ...\n")
   expdata <- SpectraTools::FilterNULL(expdata, keepInfo = TRUE)
 
-  if (missing(libdata)) {
-    libdataAll <- lapply(seq_along(libnames), function(idx) {
-      libname <- libnames[idx]
-      libfile <- system.file("lib", libname, package = getPackageName())
-      libdata <- readRDS(libfile)
-      libdata@info$rt <- switch(experimentParam@lc,
-                                "RP" = libdata@info$rt.rp,
-                                "HILIC" = libdata@info$rt.hilic)
-      return(libdata)
-    })
-  } else {
+  if (class(libdata) != 'list') {
     libdataAll <- list(libdata)
+  } else {
+    libdataAll <- libdata
   }
 
   specSearched <- lapply(seq_along(libdataAll), function(idx) {

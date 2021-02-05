@@ -67,45 +67,44 @@ GetParamTable <- function(params) {
   return(res)
 }
 
+.ShowSeperateLines <- function(info) {
+  sepLine <- paste(rep('-', 40), collapse = '')
+  cat(' ', sepLine, paste0('  ', info), sepLine, sep = '\n')
+}
 
-LoadParam <- function(wd = ".",
-                      libTypes = c("standard", "predict"),
-                      spectraType = c("msp")) {
+.CheckSkip <- function(fn, rerun) {
+  # check if use the existed results. if rerun = FALSE, ignore this check
+  a <- file.exists(fn) & {!rerun}
+  if (a) {
+    cat('Using previous results: ', fn, '\n')
+  }
+  a
+}
 
-  spectraType <- match.arg(spectraType)
 
-  fileParam <- system.file("params", paste0("params_", spectraType), package = getPackageName())
-  params <- readRDS(fileParam)
-# browser()
-  params$matchParam <- lapply(libTypes, function(libType) {
-    fileParam <- system.file("params", paste0("matchParam_", libType), package = getPackageName())
-    readRDS(fileParam)
-  })
-
-  params$searchParam <- lapply(libTypes, function(libType) {
-    fileParam <- system.file("params", paste0("searchParam_", libType), package = getPackageName())
-    readRDS(fileParam)
-  })
-
-  params$experimentParam@wd <- wd
-  wd0 <- getwd()
-  setwd(wd)
-  .CheckDir <- function(dirpath) {
-    if (!dir.exists(dirpath)) {
-      dir.create(dirpath)
+.MakeUniqueNames <- function(name) {
+  duplicated <- TRUE
+  i <- 2
+  while (duplicated) {
+    idxDuplicated <- which(duplicated(name))
+    if (length(idxDuplicated) > 0) {
+      if (i == 2) {
+        name[idxDuplicated] <- paste0(name[idxDuplicated], '_', i)
+      } else {
+        name[idxDuplicated] <- gsub(paste0('_', i - 1), paste0('_', i),
+                                    name[idxDuplicated])
+      }
+      i <- i + 1
+    } else {
+      duplicated <- FALSE
     }
   }
-
-  .CheckDir(params$experimentParam@resDir)
-  .CheckDir(params$experimentParam@tmpDir)
-  save(params, file = file.path(params$experimentParam@resDir, "paramsOnload.Rda"),
-       version = 2)
-  write.csv(GetParamTable(params),
-            file.path(params$experimentParam@resDir, "paramsOnload.csv"),
-            row.names = FALSE)
-  for (nm in names(params)) {
-    assign(nm, params[[nm]], envir = parent.frame())
-  }
-  options(mc.cores = params$experimentParam@nSlaves)
-  setwd(wd0)
+  return(name)
 }
+
+
+.GetPpmRange <- function(mz, ppm, resDefineAt = 400) {
+  mz + c(-1, 1) * max(prod(mz, ppm, 1e-06), prod(resDefineAt,
+                                                 ppm, 1e-06))
+}
+

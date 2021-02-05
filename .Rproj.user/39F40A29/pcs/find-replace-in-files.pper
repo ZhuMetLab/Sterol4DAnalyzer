@@ -1,13 +1,14 @@
 {
     "dialog-state": {
-        "query": "nSlaves",
-        "path": "~/OneDrive/work/dev/Lipid4DAnalyzer/Lipid4DAnalyzer",
+        "query": "MSProcess",
+        "path": "",
         "regex": false,
         "caseSensitive": false,
         "filePatterns": [],
         "excludeFilePatterns": [],
         "resultsCount": 1,
         "errorCount": 0,
-        "replaceErrors": ""
+        "replaceErrors": "",
+        "projectRelative": true
     }
 }
