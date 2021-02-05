@@ -1,6 +1,6 @@
 Package: Sterol4DAnalyzer
 Type: Package
-Title: Sterol-lipid identifier
+Title: Sterol-lipids identifier
 Version: 1.0.0
 Author: Yandong Yin
 Maintainer: Yandong Yin <yinyandong@sioc.ac.cn>, zhulab <zhulab@sioc.ac.cn>
