@@ -17,7 +17,7 @@ install.packages('devtools')
 # install dependencies
 install.packages('BiocManager')
 BiocManager::install(c('BiocParallel', 'ggplot2', 'ggrepel'))
-devtools::install_github(ZhuMetLab/SpectraTools)
+devtools::install_github('ZhuMetLab/SpectraTools')
 ```
 
 #### install Steorol4DAnalyzer
@@ -25,7 +25,7 @@ devtools::install_github(ZhuMetLab/SpectraTools)
 ``` R
 # install dependencies
 install.packages('BiocManager')
-devtools::install_github(ZhuMetLab/Sterol4DAnalyzer)
+devtools::install_github('ZhuMetLab/Sterol4DAnalyzer')
 ```
 
 
