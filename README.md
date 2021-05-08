@@ -28,4 +28,8 @@ install.packages('BiocManager')
 devtools::install_github('ZhuMetLab/Sterol4DAnalyzer')
 ```
 
+#### run Steorol4DAnalyzer
+``` $
+library(Steorol4DAnalyzer)
 
+```
